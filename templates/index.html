@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ocean City Parking Lot Status</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+       body {
+        background-image: url('/static/resources/background.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        backdrop-filter: blur(5px);
+    }
+
+        .overlay {
+            background-color: rgba(255, 255, 255, 0.85);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="font-sans flex items-center justify-center min-h-screen">
+
+    <div class="overlay max-w-md w-full text-center">
+        <h1 class="text-2xl font-bold mb-2">Ocean City Parking Lot</h1>
+
+        <!-- Live Snapshot -->
+        <img id="liveImage" class="rounded-lg mb-4 shadow" src="https://s117.ipcamlive.com/streams/75zmxsckqdgll0i32/snapshot.jpg" alt="Live Feed" />
+
+        <!-- Status Info -->
+        <div class="mb-4">
+            <p class="text-lg"><strong>Occupied:</strong> <span id="occupied">--</span></p>
+            <p class="text-lg"><strong>Available:</strong> <span id="available">--</span></p>
+            <p class="text-lg"><strong>Occupancy:</strong> <span id="percentage" class="font-semibold">--%</span></p>
+        </div>
+
+        <!-- Occupancy Progress Bar -->
+        <div class="relative w-full h-6 bg-gray-200 rounded-full overflow-hidden mb-2">
+            <div id="occupancyBar" class="h-full bg-green-400 rounded-full transition-all duration-500 ease-in-out" style="width: 0%;"></div>
+        </div>
+
+        <!-- Last Updated -->
+        <p class="text-sm text-gray-400">Last updated: <span id="last_updated">--</span></p>
+    </div>
+
+    <script>
+        function refreshImage() {
+            const img = document.getElementById("liveImage");
+            img.src = "https://s117.ipcamlive.com/streams/75zmxsckqdgll0i32/snapshot.jpg?" + new Date().getTime();
+        }
+
+        async function fetchStatus() {
+            try {
+                const res = await fetch("/api/status");
+                const data = await res.json();
+
+                const occupied = data.occupied;
+                const available = data.available;
+                const total = occupied + available;
+                const percent = total > 0 ? Math.round((occupied / total) * 100) : 0;
+
+                document.getElementById("occupied").textContent = occupied;
+                document.getElementById("available").textContent = available;
+                document.getElementById("percentage").textContent = percent + "%";
+                document.getElementById("last_updated").textContent = data.last_updated;
+
+                // Update bar
+                const bar = document.getElementById("occupancyBar");
+                bar.style.width = percent + "%";
+
+                // Color logic
+                if (percent < 50) {
+                    bar.className = "h-full bg-green-400 rounded-full transition-all duration-500 ease-in-out";
+                } else if (percent < 80) {
+                    bar.className = "h-full bg-yellow-400 rounded-full transition-all duration-500 ease-in-out";
+                } else {
+                    bar.className = "h-full bg-red-500 rounded-full transition-all duration-500 ease-in-out";
+                }
+
+            } catch (err) {
+                console.error("Fetch failed:", err);
+            }
+        }
+
+        // Initial load
+        refreshImage();
+        fetchStatus();
+
+        // Update every second
+        setInterval(() => {
+            refreshImage();
+            fetchStatus();
+        }, 1000);
+    </script>
+</body>
+</html>
